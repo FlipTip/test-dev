@@ -1,0 +1,61 @@
+name: GH Pages Deploy
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "**.md"
+
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - "**.md"
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@master
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js ⚙️
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
+      - name: Get Yarn cache directory 📦
+        id: yarn-cache-dir
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - name: Cache packages 📦
+        uses: actions/cache@v2
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: ${{ runner.os }}-yarn-
+
+      - name: Install packages 🔧
+        run: yarn install --frozen-lockfile
+
+      - name: Lint 🧐
+        run: yarn lint:check
+
+      - name: Test 🚨
+        run: yarn test:unit
+
+      - name: Build 🏗️
+        run: yarn build
+        env:
+          NODE_ENV: production
+
+      - name: Deploy to GH Pages 🚀
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: dist
+          keep_files: true
